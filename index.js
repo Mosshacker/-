@@ -7,11 +7,18 @@ export default {
       }
 
       const data = await response.json();
-      const hukamGurmukhi = data.hukamnama.hukamnamaGurmukhi.map(l => l.line).join("\n");
-      const hukamEnglish = data.hukamnama.hukamnamaEnglish.map(l => l.line).join("\n");
 
-      const raag = data.hukamnama.meta.raag.english;
-      const source = `${data.hukamnama.meta.source.english} (Ang ${data.hukamnama.meta.page})`;
+      // Defensive checks
+      const gurmukhiLines = data?.hukamnama?.hukamnamaGurmukhi || [];
+      const englishLines = data?.hukamnama?.hukamnamaEnglish || [];
+
+      const hukamGurmukhi = gurmukhiLines.map(l => l.line).join("\n") || "No Gurmukhi text available.";
+      const hukamEnglish = englishLines.map(l => l.line).join("\n") || "No English translation available.";
+
+      const raag = data?.hukamnama?.meta?.raag?.english || "Unknown Raag";
+      const sourceMeta = data?.hukamnama?.meta?.source?.english || "Unknown Source";
+      const page = data?.hukamnama?.meta?.page || "?";
+      const source = `${sourceMeta} (Ang ${page})`;
 
       const fullText = 
 `📜 Hukamnama Today
@@ -28,9 +35,7 @@ ${hukamEnglish}
 — via api.gurbaninow.com`;
 
       return new Response(fullText, {
-        headers: {
-          "content-type": "text/plain; charset=utf-8",
-        },
+        headers: { "content-type": "text/plain; charset=utf-8" },
       });
     } catch (error) {
       return new Response("Error: " + error.message, { status: 500 });
