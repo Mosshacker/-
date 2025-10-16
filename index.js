@@ -1,40 +1,44 @@
-export default {
-  async fetch(request, env, ctx) {
-    try {
-      const apiResponse = await fetch("https://api.gurbaninow.com/v2/hukamnama/today");
-      const data = await apiResponse.json();
+addEventListener('fetch', event => {
+  event.respondWith(handleRequest(event.request))
+})
 
-      // Destructure safely
-      const hukam = data.hukamnama || {};
-      const date = hukam.date || "Unknown Date";
-      const raag = hukam.raag || "Unknown Raag";
-      const source = hukam.source || "Unknown Source";
-      const ang = hukam.ang || "?";
-      const gurmukhi = hukam.gurmukhi || "No Gurmukhi text available.";
-      const english = hukam.english || "No English translation available.";
+async function handleRequest(request) {
+  try {
+    // Fetch today's Hukamnama from the API
+    const res = await fetch('https://api.gurbaninow.com/v2/hukamnama/today')
+    if (!res.ok) throw new Error('Failed to fetch Hukamnama')
+    const data = await res.json()
 
-      // Create formatted text
-      const output = `
-📜 Hukamnama Today
---------------------
-Date: ${date}
-Ang: ${ang}
-Raag: ${raag}
-Source: ${source}
+    let output = []
 
-🔹 Gurmukhi:
-${gurmukhi}
+    // Header info
+    const date = data.date.gregorian
+    const info = data.hukamnamainfo
 
-🔹 English Translation:
-${english}
-`;
+    output.push(`Hukamnama for ${date.month} ${date.date}, ${date.year} (${date.day})`)
+    output.push(`Source: ${info.source.english}, Ang ${info.source.pageName.english}`)
+    output.push(`Raag: ${info.raag.english}`)
+    output.push(`Writer: ${info.writer.english}`)
+    output.push("\n---\n")
 
-      return new Response(output, {
-        headers: { "content-type": "text/plain; charset=utf-8" },
-      });
+    // Process each line
+    data.hukamnama.forEach(lineObj => {
+      const line = lineObj.line
+      const gurmukhi = line.gurmukhi?.unicode || ''
+      const transliteration = line.transliteration?.english?.text || ''
+      const translation = line.translation?.english?.default || ''
 
-    } catch (err) {
-      return new Response("Error fetching Hukamnama: " + err.message, { status: 500 });
-    }
-  },
-};
+      output.push(`Gurmukhi: ${gurmukhi}`)
+      output.push(`Transliteration: ${transliteration}`)
+      output.push(`Translation: ${translation}`)
+      output.push("\n")
+    })
+
+    const plaintext = output.join('\n')
+    return new Response(plaintext, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+    })
+  } catch (err) {
+    return new Response(`Error: ${err.message}`, { status: 500 })
+  }
+}
