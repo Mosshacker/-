@@ -1,51 +1,40 @@
 export default {
   async fetch(request, env, ctx) {
     try {
-      const response = await fetch("https://api.gurbaninow.com/v2/hukamnama/today");
-      if (!response.ok) {
-        return new Response("Failed to fetch Hukamnama.", { status: 500 });
-      }
+      const apiResponse = await fetch("https://api.gurbaninow.com/v2/hukamnama/today");
+      const data = await apiResponse.json();
 
-      const data = await response.json();
+      // Destructure safely
+      const hukam = data.hukamnama || {};
+      const date = hukam.date || "Unknown Date";
+      const raag = hukam.raag || "Unknown Raag";
+      const source = hukam.source || "Unknown Source";
+      const ang = hukam.ang || "?";
+      const gurmukhi = hukam.gurmukhi || "No Gurmukhi text available.";
+      const english = hukam.english || "No English translation available.";
 
-      // 👇 Add this line to log the entire response to Cloudflare logs
-      console.log(JSON.stringify(data, null, 2));
-
-      // (Rest of your code can stay the same)
-      const hukam = Array.isArray(data.hukamnama)
-        ? data.hukamnama[0]
-        : data.hukamnama;
-
-      const gurmukhiLines = hukam?.hukamnamaGurmukhi || [];
-      const englishLines = hukam?.hukamnamaEnglish || [];
-
-      const hukamGurmukhi = gurmukhiLines.map(l => l.line).join("\n") || "No Gurmukhi text available.";
-      const hukamEnglish = englishLines.map(l => l.line).join("\n") || "No English translation available.";
-
-      const raag = hukam?.meta?.raag?.english || "Unknown Raag";
-      const sourceMeta = hukam?.meta?.source?.english || "Unknown Source";
-      const page = hukam?.meta?.page || "?";
-      const source = `${sourceMeta} (Ang ${page})`;
-
-      const fullText = 
-`📜 Hukamnama Today
+      // Create formatted text
+      const output = `
+📜 Hukamnama Today
 --------------------
+Date: ${date}
+Ang: ${ang}
 Raag: ${raag}
 Source: ${source}
 
 🔹 Gurmukhi:
-${hukamGurmukhi}
+${gurmukhi}
 
 🔹 English Translation:
-${hukamEnglish}
+${english}
+`;
 
-— via api.gurbaninow.com`;
-
-      return new Response(fullText, {
+      return new Response(output, {
         headers: { "content-type": "text/plain; charset=utf-8" },
       });
-    } catch (error) {
-      return new Response("Error: " + error.message, { status: 500 });
+
+    } catch (err) {
+      return new Response("Error fetching Hukamnama: " + err.message, { status: 500 });
     }
   },
 };
