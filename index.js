@@ -1,5 +1,5 @@
 export default {
-  async fetch(request) {
+  async fetch(request, env, ctx) {
     try {
       const response = await fetch("https://api.gurbaninow.com/v2/hukamnama/today");
       if (!response.ok) {
@@ -8,16 +8,23 @@ export default {
 
       const data = await response.json();
 
-      // Defensive checks
-      const gurmukhiLines = data?.hukamnama?.hukamnamaGurmukhi || [];
-      const englishLines = data?.hukamnama?.hukamnamaEnglish || [];
+      // 👇 Add this line to log the entire response to Cloudflare logs
+      console.log(JSON.stringify(data, null, 2));
+
+      // (Rest of your code can stay the same)
+      const hukam = Array.isArray(data.hukamnama)
+        ? data.hukamnama[0]
+        : data.hukamnama;
+
+      const gurmukhiLines = hukam?.hukamnamaGurmukhi || [];
+      const englishLines = hukam?.hukamnamaEnglish || [];
 
       const hukamGurmukhi = gurmukhiLines.map(l => l.line).join("\n") || "No Gurmukhi text available.";
       const hukamEnglish = englishLines.map(l => l.line).join("\n") || "No English translation available.";
 
-      const raag = data?.hukamnama?.meta?.raag?.english || "Unknown Raag";
-      const sourceMeta = data?.hukamnama?.meta?.source?.english || "Unknown Source";
-      const page = data?.hukamnama?.meta?.page || "?";
+      const raag = hukam?.meta?.raag?.english || "Unknown Raag";
+      const sourceMeta = hukam?.meta?.source?.english || "Unknown Source";
+      const page = hukam?.meta?.page || "?";
       const source = `${sourceMeta} (Ang ${page})`;
 
       const fullText = 
